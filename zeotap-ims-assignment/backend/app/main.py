@@ -1,14 +1,25 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes import signal_routes, incident_routes, rca_routes
-from app.services.metrics_service import get_total_signals
+from app.services.metrics_service import get_total_signals, start_metrics_logger
 from app.services.debounce_service import get_all_incidents
-from app.services.metrics_service import start_metrics_logger
 
 app = FastAPI(
     title="Mission-Critical Incident Management System",
     version="1.0.0",
     description="High-throughput Incident Management System for SRE workflows"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(signal_routes.router, prefix="/signals", tags=["Signals"])
@@ -45,6 +56,7 @@ def metrics():
             if incident["status"] == "CLOSED"
         ])
     }
+
 
 @app.on_event("startup")
 def start_background_metrics():
