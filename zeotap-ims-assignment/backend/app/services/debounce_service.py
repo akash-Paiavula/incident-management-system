@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from app.services.state_machine import validate_status_transition
 from app.services.metrics_service import increment_signal_count
+from app.services.alert_strategy import resolve_alert_priority, get_alert_strategy
 
 DEBOUNCE_WINDOW_SECONDS = 10
 
@@ -17,6 +18,10 @@ def process_signal(signal):
 
     component_id = signal.component_id
     now = datetime.utcnow()
+
+    alert_strategy = get_alert_strategy(signal.component_type)
+    resolved_severity = resolve_alert_priority(signal.component_type)
+    alert_description = alert_strategy.get_description()
 
     existing = active_debounce.get(component_id)
 
@@ -39,7 +44,8 @@ def process_signal(signal):
         "incident_id": incident_id,
         "component_id": signal.component_id,
         "component_type": signal.component_type,
-        "severity": signal.severity,
+        "severity": resolved_severity,
+        "alert_description": alert_description,
         "status": "OPEN",
         "start_time": signal.timestamp,
         "created_at": now,
@@ -60,6 +66,8 @@ def process_signal(signal):
         "debounced": False,
         "incident_created": True,
         "incident_id": incident_id,
+        "severity": resolved_severity,
+        "alert_description": alert_description,
         "message": "New incident created"
     }
 
